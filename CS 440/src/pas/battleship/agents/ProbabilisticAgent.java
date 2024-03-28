@@ -19,7 +19,8 @@ public class ProbabilisticAgent
 {
 
     private static Map<Ship.ShipType, Integer> shipLengths = new HashMap<Ship.ShipType, Integer>();
-    private static String mode; // Hunt or target, target if we found a hit and are attacking around it. Hunt if we don't know any hits on the board
+    private static Coordinate previousShot; // The last shot we took
+    private static HashSet<Coordinate> hitSquares = new HashSet<Coordinate>(); // The squares that we have hit and not sunk
 
     public ProbabilisticAgent(String name)
     {
@@ -29,21 +30,49 @@ public class ProbabilisticAgent
         shipLengths.put(Ship.ShipType.DESTROYER, 3);
         shipLengths.put(Ship.ShipType.SUBMARINE, 3);
         shipLengths.put(Ship.ShipType.PATROL_BOAT, 2); 
-        mode = "HUNT";
+
+        previousShot = null; 
+
         System.out.println("[INFO] ProbabilisticAgent.ProbabilisticAgent: constructed agent");
     }
 
     @Override
     public Coordinate makeMove(final GameView game)
     {
-        int[][] probMap = getHeatMap(game);
+        EnemyBoard.Outcome[][] previousShots = game.getEnemyBoardView(); // Check the previous shot
 
-        for (int i = 0; i < probMap.length; i++) {
-            for (int j = 0; j < probMap[0].length; j++) {
-                System.out.print(probMap[i][j] + " ");
+        if (previousShot != null) {
+            // If the previous shot was a hit, then we need to update the mode to target
+            if (previousShots[previousShot.getXCoordinate()][previousShot.getYCoordinate()].equals(Outcome.HIT)) {
+                hitSquares.add(previousShot);
             }
-            System.out.println();
         }
+
+        // Remove any sunked squares from the hitSquares
+        for (Coordinate square: hitSquares) {
+            if (previousShots[square.getXCoordinate()][square.getYCoordinate()].equals(Outcome.SUNK)) {
+                hitSquares.remove(square);
+            }
+        }
+        
+        int[][] probMap = getHeatMap(game); // Generate Base heat Map
+
+        /*
+         * Notes:
+         * -- If there are "hit" not sunken squares, then weight the neighbors of the hit square higher (*2 or *3 for example) 
+         * -- If the previous "hit" non sinks are aligned vertically, weight vertical neighbors more. Vice versa for horizontal (need some way to detect direction of hits)
+         *    -- Could use a hashset to store hits, then start with one and check if vertical or horizonal neighbors are in the set
+         *    -- Iterate over each coordinate in the set, if it has horizonal neighbors, 
+         *       increase weight of horizontal "UNKNOWN" neighbors higher and increase weight of vertical "UNKNOWN" neighbors a bit less.
+         *       Vice versa for vertical neighbors contained in the set
+         */
+
+        // Loop through hitSquares
+        for (Coordinate square: hitSquares) {
+            boolean horizontal = false; // Flags for if horizontal hits exist
+            boolean vertical = false; // Flags for if vertical hits exist
+        }
+
 
         return null;
     }
