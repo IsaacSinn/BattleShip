@@ -42,18 +42,27 @@ public class ProbabilisticAgent
         EnemyBoard.Outcome[][] previousShots = game.getEnemyBoardView(); // Check the previous shot
 
         if (previousShot != null) {
-            // If the previous shot was a hit, then we need to update the mode to target
+            // If the previous shot was a hit, add it to the hitSquares
             if (previousShots[previousShot.getXCoordinate()][previousShot.getYCoordinate()].equals(Outcome.HIT)) {
                 hitSquares.add(previousShot);
+                // System.out.println("Hit at: " + previousShot.toString());
             }
         }
 
+        List<Coordinate> sunkSquares = new ArrayList<Coordinate>(); // List of sunk squares
+
         // Remove any sunked squares from the hitSquares
         for (Coordinate square: hitSquares) {
-            if (previousShots[square.getXCoordinate()][square.getYCoordinate()].equals(Outcome.SUNK)) {
-                hitSquares.remove(square);
+            if (previousShots[square.getXCoordinate()][square.getYCoordinate()] == Outcome.SUNK) {
+                sunkSquares.add(square);
             }
         }
+
+        for (Coordinate square: sunkSquares) {
+            hitSquares.remove(square);
+        }
+
+        sunkSquares.clear(); // Clear the list
         
         int[][] probMap = getHeatMap(game); // Generate Base heat Map
 
@@ -71,10 +80,86 @@ public class ProbabilisticAgent
         for (Coordinate square: hitSquares) {
             boolean horizontal = false; // Flags for if horizontal hits exist
             boolean vertical = false; // Flags for if vertical hits exist
+
+            // Horizontal and Vertical flags
+            if (hitSquares.contains(new Coordinate(square.getXCoordinate() + 1, square.getYCoordinate())) || hitSquares.contains(new Coordinate(square.getXCoordinate() - 1, square.getYCoordinate()))) {
+                horizontal = true;
+            }
+
+            if (hitSquares.contains(new Coordinate(square.getXCoordinate(), square.getYCoordinate() + 1)) || hitSquares.contains(new Coordinate(square.getXCoordinate(), square.getYCoordinate() - 1))) {
+                vertical = true;
+            }
+
+            int x = square.getXCoordinate();
+            int y = square.getYCoordinate();
+
+            // Up neighbor
+            if (y - 1 >= 0 && previousShots[x][y - 1] == Outcome.UNKNOWN) {
+                if (vertical) {
+                    probMap[x][y - 1] += 150;
+                } else {
+                    probMap[x][y - 1] += 75;
+                
+                }
+            }
+
+            // Right neighbor
+            if (x + 1 < probMap.length && previousShots[x + 1][y] == Outcome.UNKNOWN) {
+                if (horizontal) {
+                    probMap[x + 1][y] += 150;
+                } else {
+                    probMap[x + 1][y] += 75;
+                }
+            }
+
+            // Down neighbor
+            if (y + 1 < probMap[0].length && previousShots[x][y + 1] == Outcome.UNKNOWN) {
+                if (vertical) {
+                    probMap[x][y + 1] += 150;
+                } else {
+                    probMap[x][y + 1] += 75;
+                }
+            }
+
+            // Left neighbor 
+            if (x - 1 >= 0 && previousShots[x - 1][y] == Outcome.UNKNOWN) {
+                if (horizontal) {
+                    probMap[x - 1][y] += 150;
+                } else {
+                    probMap[x - 1][y] += 75;
+                }
+            }
         }
 
+        // Pick square with the highest probability
+        int maxProb = 0;
+        Coordinate target = null; 
 
-        return null;
+        // Get the most probable square to shoot at
+        for (int i = 0; i < probMap.length; i++) {
+            for (int j = 0; j < probMap[0].length; j++) {
+                if (probMap[i][j] > maxProb) {
+                    maxProb = probMap[i][j];
+                    target = new Coordinate(i, j);
+                }
+            }
+        }
+
+        previousShot = target; // Update the previous shot
+
+        // Print map
+        for (int i = 0; i < probMap.length; i++) {
+            for (int j = 0; j < probMap[0].length; j++) {
+                System.out.print(probMap[i][j] + " ");
+            }
+            System.out.println();
+        }
+        
+        // System.out.println();
+        // System.out.println("Attacking square at: " + target.toString());
+        // System.out.println();
+
+        return target;
     }
 
     private int[][] getHeatMap(final GameView game) {
